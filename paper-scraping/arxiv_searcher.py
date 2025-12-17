@@ -3,9 +3,8 @@ from dataclasses import dataclass
 import json
 import logging
 import os
-import re
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List
 
 import arxiv
 
@@ -27,8 +26,6 @@ BASE_DIR: str = os.environ.get(
 
 # Setup paths
 LOG_DIR = os.path.join(BASE_DIR, config["log_dir"])
-
-DATE_FORMAT_RE = re.compile(r"^\d{12}$")  # YYYYMMDDHHMM
 
 # Setup logging
 logging.basicConfig(
@@ -80,66 +77,55 @@ class Paper:
     pdf_link: str
 
 
-def is_relevant(paper, DEFAULT_MUST_INCLUDE_KEYWORDS, optional_keywords) -> bool:
+def is_relevant(paper, must_include: List[str], optional_keywords: List[str]) -> bool:
     """Check if the paper is relevant based on its title and abstract"""
     text = (paper.title + " " + paper.summary).lower()
-    return any(keyword.lower() in text for keyword in DEFAULT_MUST_INCLUDE_KEYWORDS) and any(
+    return any(keyword.lower() in text for keyword in must_include) and any(
         keyword.lower() in text for keyword in optional_keywords
     )
 
 
-def parse_keyword_list(raw_keywords: Optional[str]) -> List[str]:
-    """
-    Parse a comma-separated string of keywords into a list.
-
-    Example:
-        "time series,forecasting" -> ["time series", "forecasting"]
-    """
-    if not raw_keywords:
-        return []
-    return [item.strip() for item in raw_keywords.split(",") if item.strip()]
-
-
-def validate_date_str(date_str: str) -> str:
-    """Validate that the date string is in the expected format YYYYMMDDHHMM."""
-    if not DATE_FORMAT_RE.match(date_str):
-        raise ValueError(f"Invalid date format '{date_str}'. Expected YYYYMMDDHHMM.")
-    return date_str
-
-
-def search(optional_keywords: List[str], start_date: str, end_date: str, sort_by: str) -> Dict[str, Paper]:
+def search(optional_keywords: str, start_date: datetime.date, end_date: datetime.date, sort_by: str) -> List[Paper]:
     """
     Search arXiv for papers matching the specified criteria.
 
     Args:
-        optional_keywords (List[str]): List of optional keywords for filtering.
-        start_date (str): Start date in YYYYMMDDHHMM format.
-        end_date (str): End date in YYYYMMDDHHMM format.
+        optional_keywords str: str of optional keywords for filtering (e.g "time-series, forecasting"). If empty (""), the function uses
+            the default optional keyword list defined in DEFAULT_OPTIONAL_KEYWORDS.
+        start_date datetime.date: Start date.
+        end_date datetime.date: End date.
         sort_by (str): Sorting method, either 'relevance' or 'submitted'.
     """
     logging.info("Querying arXiv for papers.")
 
-    optional_keywords = optional_keywords if optional_keywords else DEFAULT_OPTIONAL_KEYWORDS
-    start_date = validate_date_str(start_date)
-    end_date = validate_date_str(end_date)
+    if end_date < start_date:
+        raise ValueError("End Date must be greater than or equal to Start Date")
+
+    optional_keywords = DEFAULT_OPTIONAL_KEYWORDS if not optional_keywords else [item.strip() for item in optional_keywords.split(",")]
+    print("Optional keywords for filtering:", optional_keywords)
+
+    start_date = start_date.strftime("%Y%m%d0000")
+    end_date = end_date.strftime("%Y%m%d2359")
 
     date_range = f"AND submittedDate:[{start_date} TO {end_date}]"
     sort_option = arxiv.SortCriterion.Relevance if sort_by == "relevance" else arxiv.SortCriterion.SubmittedDate
     
+    print(f"Date Range: {start_date} - {end_date}")
+
     client = arxiv.Client()
-    papers = {}
+    papers = []
 
     # Fetch papers for each query
     for query in queries:
         try:
             query = f"{query} {date_range}"
             search = arxiv.Search(
-                query=query, max_results=300, sort_by=sort_option
+                query=query, max_results=200, sort_by=sort_option
             )
 
             for result in client.results(search):
                 if is_relevant(result, DEFAULT_MUST_INCLUDE_KEYWORDS, optional_keywords):
-                    papers[result.entry_id] = Paper(
+                    papers.append(Paper(
                         arxiv_id=result.get_short_id(),
                         title=result.title,
                         authors=[a.name for a in result.authors],
@@ -148,7 +134,7 @@ def search(optional_keywords: List[str], start_date: str, end_date: str, sort_by
                         updated=result.updated,
                         link=result.entry_id,
                         pdf_link=result.entry_id.replace("abs", "pdf"),
-                    )
+                    ))
         except Exception as e:
             logging.error(f"Error executing query '{query}': {str(e)}")
     return papers
@@ -167,15 +153,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start_date",
         type=str,
-        default=None,
-        help="Start date in YYYYMMDDHHMM format.",
+        default="2024-01-01",
+        help="Start date in YYYY-MM-DD format.",
     )
 
     parser.add_argument(
         "--end_date",
         type=str,
         default=None,
-        help="End date in YYYYMMDDHHMM format.",
+        help="End date in YYYY-MM-DD format.",
     )
 
     parser.add_argument(
@@ -189,21 +175,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     results = search(
-        optional_keywords=parse_keyword_list(args.optional_keywords),
-        start_date=args.start_date,
-        end_date=args.end_date,
+        optional_keywords=args.optional_keywords,
+        start_date=datetime.strptime(args.start_date, "%Y-%m-%d").date(),
+        end_date=datetime.strptime(args.end_date, "%Y-%m-%d").date(),
         sort_by=args.sort_by,
     )
 
     print(f"Total papers found: {len(results)}")
     print()
 
-    for i, (k, v) in enumerate(results.items()):
+    for i in range(len(results)):
         if i >= 5:
             break
-
-        print(f"[{i+1}] {v.arxiv_id} - {v.title}")
-        print(f"Authors: {', '.join(v.authors)}")
-        print(f"Published: {v.published}")
-        print(f"PDF Link: {v.pdf_link}")
+        paper = results[i]
+        print(f"[{i+1}] {paper.arxiv_id} - {paper.title}")
+        print(f"Authors: {', '.join(paper.authors)}")
+        print(paper.abstract)
         print()
