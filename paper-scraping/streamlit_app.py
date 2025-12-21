@@ -21,10 +21,13 @@ st.markdown("""
         content: "AI4Society";
         font-size: 1.3rem;
         font-weight: 600;
-        padding-left: 2rem;
         display: flex;
         align-items: center;
+
+        position: absolute;
         height: 100%;
+        width: 100%;
+        padding-left: 2rem;
         border-bottom: 1px solid;
     }
 
@@ -52,6 +55,13 @@ st.markdown("""
         line-height: 1.4;
     }
     
+    /* Set paper date on the left and link to the right */
+    .paper-metadata {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
     /* Reduce the padding of the expansion button. */
     div[data-testid="stExpander"] summary {
         padding: 0.3rem 1rem !important;
@@ -112,12 +122,13 @@ st.markdown("""
     div[data-testid="stAlertContentError"] * {
         color: #000000;
     }
+
 </style>
 """, unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=timedelta(hours=1), max_entries=1000, show_spinner=False)
-def search_papers(keywords: str, start_date: date, end_date: date, sort_opt: str):
+def search_papers(keywords: str, start_date: date, end_date: date, sort_opt: str) -> List[Paper]:
     return search(
         optional_keywords=keywords,
         start_date=start_date,       
@@ -142,9 +153,9 @@ st.title("ArXiv Paper Search", anchor=False)
 st.markdown(f'<div class="page-subtitle">Discover research papers on Large Language Models and related topics</div>', unsafe_allow_html=True)
 
 keywords = st.text_input(
-    "Search Keywords",
-    placeholder="e.g., time-series, forecasting",
-    help=f"Leave empty to use the default keywords: {', '.join(DEFAULT_OPTIONAL_KEYWORDS)}",
+    "Search Keywords or Phrases (Separated by commas)",
+    placeholder="e.g., large language models, automated planning, symbolic planning, multi-agent planning...",
+    help=f"You can enter multiple keywords or phrases, separated by commas. Leave empty to use the default keywords: {', '.join(DEFAULT_OPTIONAL_KEYWORDS)}",
 )
 
 col_start_date, col_end_date, col_order_by, col_search_bt = st.columns([1, 1, 1.5, 1], vertical_alignment="center")
@@ -152,7 +163,7 @@ col_start_date, col_end_date, col_order_by, col_search_bt = st.columns([1, 1, 1.
 with col_start_date:
     start_date = st.date_input(
         "Start Date",
-        value=None
+        value=date(date.today().year - 1, 1, 1)
     )
 
 with col_end_date:
@@ -164,7 +175,8 @@ with col_end_date:
 with col_order_by:
     sort_option = st.selectbox(
         "Order By",
-        ORDER_BY_OPTIONS.keys()
+        ORDER_BY_OPTIONS.keys(),
+        help="Sort applied to ArXiV search"
     )
 
 with col_search_bt:
