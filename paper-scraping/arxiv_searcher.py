@@ -62,19 +62,17 @@ class Paper:
     pdf_link: str
 
 
-def build_arxiv_query(keywords: List[str], operator: str, category: str="cs.AI"):
-    """Create arxiv query based on keywords and category"""
-    def format(keyword: str) -> str:
-        # Quote only multi-word phrases
-        return f'"{keyword}"' if " " in keyword else keyword
+def build_arxiv_query(keywords: List[str], operator: str, category: str = "cs.AI") -> str:
+    """Create arXiv query"""
     
-    condition = f" {operator} ".join(format(kw) for kw in keywords)
+    def clause(keyword: str) -> str:
+        kw = keyword.strip().replace('"', "")
+
+        # Quote multi-word keywords to ensure phrase matching in arXiv queries
+        return f'(ti:"{kw}" OR abs:"{kw}")' if " " in kw else f'(ti:{kw} OR abs:{kw})'
+
+    condition = f" {operator} ".join(clause(kw) for kw in keywords if kw.strip())
     return f'cat:{category} AND ({condition})'
-
-
-def is_relevant(paper, must_include) -> bool:
-    text = (paper.title + " " + paper.summary).lower()
-    return any(keyword.lower() in text for keyword in must_include)
 
 
 def search(keywords: str, start_date: datetime.date, end_date: datetime.date, sort_by: str) -> List[Paper]:
@@ -107,28 +105,29 @@ def search(keywords: str, start_date: datetime.date, end_date: datetime.date, so
     keywords = DEFAULT_KEYWORDS if is_default_keywords else [item.strip() for item in keywords.split(",")]
     query = build_arxiv_query(keywords=keywords, operator="OR" if is_default_keywords else "AND")
 
-    print("Keywords for filtering:", keywords)
+    print("Keywords for filtering: ", keywords)
 
     # Fetch papers for the query
     query = f"{query} {date_range}"
-    print(f"Query being used: {query}")
+    print(f"Query being used: {query}\n")
+
     search = arxiv.Search(
         query=query, max_results=200, sort_by=arxiv.SortCriterion.Relevance if sort_by == "relevance" else arxiv.SortCriterion.SubmittedDate
     )
 
-    for result in client.results(search):
-        if is_relevant(result, keywords):
-            papers.append(Paper(
-                arxiv_id=result.get_short_id(),
-                title=result.title,
-                authors=[a.name for a in result.authors],
-                abstract=result.summary,
-                published=result.published,
-                updated=result.updated,
-                link=result.entry_id,
-                pdf_link=result.pdf_url,
-            ))
-    return papers
+    return [
+        Paper(
+            arxiv_id=result.get_short_id(),
+            title=result.title,
+            authors=[a.name for a in result.authors],
+            abstract=result.summary,
+            published=result.published,
+            updated=result.updated,
+            link=result.entry_id,
+            pdf_link=result.pdf_url,
+        )
+        for result in client.results(search)
+    ]
 
 
 if __name__ == "__main__":
@@ -174,14 +173,14 @@ if __name__ == "__main__":
         sort_by=args.sort_by,
     )
 
-    print(f"Total papers found: {len(results)}")
-    print()
-
     for i in range(len(results)):
-        if i >= 3:
+        if i >= 5:
             break
         paper = results[i]
         print(f"[{i+1}] {paper.arxiv_id} - {paper.title}")
         print(f"Authors: {', '.join(paper.authors)}")
         print(paper.abstract)
         print()
+
+    print()
+    print(f"Total papers found: {len(results)}")
