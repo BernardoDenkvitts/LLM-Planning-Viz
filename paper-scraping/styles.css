@@ -1,0 +1,105 @@
+header[data-testid="stHeader"]::before {
+    content: "AI4Society";
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    padding-left: 2rem;
+    border-bottom: 1px solid;
+}
+
+/* st.title */
+.block-container h1 {
+    text-align: center;
+    margin-top: -2rem !important;
+    margin-bottom: 2rem !important;
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+    text-align: center;
+    margin-top: -2.6rem;
+    font-size: 0.95rem;
+    opacity: 0.7;
+}
+
+.paper-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+/* Set paper date on the left and link to the right */
+.paper-metadata {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Reduce the padding of the expansion button. */
+div[data-testid="stExpander"] summary {
+    padding: 0.3rem 1rem !important;
+}
+
+.paper-authors, .paper-metadata {
+    font-size: 0.9rem;
+}
+
+.paper-abstract {
+    font-size: 1rem;
+    text-align: justify;
+}
+
+.results-count {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+.stButton>button {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton>button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+    color: white;
+    border-color: transparent;
+}
+
+.stButton>button:active,
+    .stButton>button:focus:not(:active) {
+    border-color: transparent !important;
+    outline: none !important;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.4) !important;
+    color: black;
+}
+
+/* Input fields */
+.stTextInput>div>div>input {
+    border-radius: 8px;
+}
+        
+/* Centralize container's columns */
+div[data-testid="stHorizontalBlock"] {
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* Errors/Tracebacks */
+div[data-testid="stAlertContentError"],
+div[data-testid="stAlertContentError"] * {
+    color: #000000;
+}
