@@ -40,6 +40,8 @@ ORDER_BY_OPTIONS = {
     "Submitted Date": "submitted",
 }
 
+DEFAULT_KEYWORDS = "large language models, multi-agent systems"
+
 # Initialize session state
 if "search_results" not in st.session_state:
     st.session_state["search_results"] = {
@@ -54,11 +56,11 @@ col_keywords, col_category = st.columns([2.5, 1])
 
 with col_keywords:
     keywords = st.text_input(
-        "Search Keywords or Phrases (Separated by commas)",
-        placeholder="e.g., large language models, multi-agent systems ...",
+        "Search Keywords or Phrases",
+        placeholder=f"e.g., {DEFAULT_KEYWORDS} ...",
         help=("Enter one or more keywords or phrases separated by commas. "
-            "Results include only papers where all keywords are present; each keyword may "
-            "appear in the title or in the abstract independently."
+            "Results include only papers where all keywords are present. "
+            f"If left empty, the default keywords - {DEFAULT_KEYWORDS} - will be used."
         )
     )
 
@@ -104,6 +106,9 @@ if search_button:
         if start_date is None:
             start_date = date(date.today().year - 1, 1, 1)
         try:
+            if not keywords:
+                keywords = DEFAULT_KEYWORDS
+
             st.session_state["search_results"]["papers"] = search_papers(keywords=keywords, start_date=start_date, end_date=end_date, sort_opt=sort_option.lower(), category_option=category_option)
             st.session_state["search_results"]["searched"] = True
         except Exception as e:
